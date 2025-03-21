@@ -12,8 +12,3 @@ export type ShapeType = {
     handStartPosition: Position,
     handEndPosition: Position,
 }
-
-export enum GameState {
-    STARTED = "started",
-    FINISHED = "finished",
-}

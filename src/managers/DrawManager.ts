@@ -183,7 +183,6 @@ export class DrawManager extends Container {
                 const willCrossPath = this.checkPathCrossing(currentShape, this._lastPoint, closestPoint);
                 if (willCrossPath) {
                     this._isBurned = true;
-                    console.log("Path crossed! Shape burned!");
                     this.triggerBurnAnimation();
                     return;
                 }
@@ -198,7 +197,6 @@ export class DrawManager extends Container {
             // Check if shape is completed
             if (this._shapeProgress >= this._requiredCoverage && !this._isCompleted) {
                 this._isCompleted = true;
-                console.log("Shape completed!");
                 this.triggerCompletionAnimation();
             }
         }

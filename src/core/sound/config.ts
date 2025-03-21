@@ -2,11 +2,6 @@ import { SoundChannel, SoundConfig } from "./types";
 
 export const SOUNDS : SoundConfig[] = [
     {
-        alias: "win",
-        url: "./assets/sounds/effect_win.mp3",
-        soundChannel: SoundChannel.EFFECT,
-    },
-    {
         alias: "lose",
         url: "./assets/sounds/effect_lose.mp3",
         soundChannel: SoundChannel.EFFECT,

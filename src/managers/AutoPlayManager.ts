@@ -30,7 +30,6 @@ export class AutoplayManager {
     }
 
     private startAutoPlay(): void {
-        console.log('Starting autoplay...');
         this._drawManager.startAutoDrawAnimation()
         // Logic to start autoplay goes here
     }

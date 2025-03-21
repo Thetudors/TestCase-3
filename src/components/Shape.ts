@@ -83,8 +83,6 @@ export class Shape extends Sprite {
                 }
             }
 
-            console.log("Non-transparent pixels extracted:", this._positions.size);
-            console.log("Positions:", Array.from(this._positions).slice(0, 10)); // Log first 10 positions
         } catch (error) {
             console.error("Error accessing texture source:", error);
         }

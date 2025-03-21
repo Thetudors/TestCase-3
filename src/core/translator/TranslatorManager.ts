@@ -53,8 +53,6 @@ export class TranslatorManager {
             // Call all registered callbacks
             this._onLoadCallbacks.forEach(callback => callback());
 
-            console.log(`Translations loaded for ${this._currentLanguage}`);
-            console.log('Translations:', this._translations);
         } catch (error) {
             console.error('Error loading translations:', error);
         }
