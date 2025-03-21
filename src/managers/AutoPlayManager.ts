@@ -33,7 +33,6 @@ export class AutoplayManager {
         console.log('Starting autoplay...');
         this._drawManager.startAutoDrawAnimation()
         // Logic to start autoplay goes here
-        // For example, you can call a function to start the game or show a random word
     }
 
 

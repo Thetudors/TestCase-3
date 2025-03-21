@@ -9,6 +9,8 @@ export type ShapeType = {
     requiredCoverage: number,
     autoPlayStartPosition: Position,
     autoPlayEndPosition: Position,
+    handStartPosition: Position,
+    handEndPosition: Position,
 }
 
 export enum GameState {

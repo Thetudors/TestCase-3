@@ -17,6 +17,10 @@ export const SPRITES: spriteConfig[] = [
     { alias: "progressbarfill", src: "/assets/sprites/progressbar_fill.png" },
     { alias: "icon", src: "/assets/sprites/brain_icon.png" },
     { alias: "autoplayhand", src: "/assets/sprites/hand.png" },
+    { alias: "rect", src: "/assets/sprites/rect.png" },
+    { alias: "failimage", src: "/assets/sprites/fail_bg.png" },
+    { alias: "welldoneimage", src: "/assets/sprites/well_done_bg.png" },
+    { alias: "downloadbutton", src: "/assets/sprites/download_button.png" },
 ]
 
 export const FONTS: FontFace[] = [

@@ -1,11 +1,11 @@
 import { Container, FederatedPointerEvent, Graphics, Point, Sprite } from "pixi.js";
 import { Shape } from "../components/Shape";
 import { ShapeType } from "../types";
-import { SHAPES } from "../config";
+import { END_SHAPE_NUMBER, SHAPES, TARGET_SHAPE_NUMBER } from "../config";
 import { getLinePoints } from "../core/utils/position";
 import { EventEmitter } from "../core/events/EventEmitter";
 import { ProgressBar } from "../components/ProgressBar";
-import { ShapeWinAnimationComplete } from "../core/events/types";
+import { AllShapesCompleted, OnGoEndShape, ShapeBurned, ShapeCompleted, ShapeWinAnimationComplete } from "../core/events/types";
 import gsap from "gsap";
 
 export class DrawManager extends Container {
@@ -38,9 +38,20 @@ export class DrawManager extends Container {
     private _lastAutoIndex: number = 0;
     private _autoPlayTimeout: any;
 
+    private _deviceWidth: number;
+    private _deviceHeight: number;
+    private _baseWidth: number = 750; // Base width used during development
+    private _baseHeight: number = 1334; // Base height used during development
+
+
     constructor(Shapes: ShapeType[] = [], progressBar: ProgressBar) {
         super();
         this._progressBar = progressBar;
+
+        // Store the current device dimensions
+        this._deviceWidth = window.innerWidth || document.documentElement.clientWidth;
+        this._deviceHeight = window.innerHeight || document.documentElement.clientHeight;
+
         this.initDisplay();
         this.createShapes(Shapes);
         this.setupInteraction();
@@ -57,6 +68,7 @@ export class DrawManager extends Container {
     }
     private initEvents(): void {
         EventEmitter.instance.on(ShapeWinAnimationComplete, this.nextShape.bind(this));
+        EventEmitter.instance.on(OnGoEndShape, this.goEndShape.bind(this));
     }
 
 
@@ -100,7 +112,6 @@ export class DrawManager extends Container {
 
         const currentShape = this._shapes[this.currentShapeIndex];
         if (!currentShape) return;
-        console.log("Pointer down on shape:", event.global);
         // Convert global coordinates to shape's local coordinates
         const localPos = currentShape.toLocal(event.global);
 
@@ -160,6 +171,7 @@ export class DrawManager extends Container {
         const closestPoint = this.findClosestShapePixel(currentShape, textureX, textureY, 40);
         if (!closestPoint) {
             this._pointsContainer.removeChildren();
+            this._progressBar.animateProgress(0); // Reset progress bar
             return;
         }
 
@@ -248,6 +260,7 @@ export class DrawManager extends Container {
         for (const point of points) {
             this.fillPointsAround(shape, point.x, point.y, radius);
         }
+        this._progressBar.animateProgress(this._shapeProgress); // Update progress bar
     }
 
     // Create a point graphic at specified world coordinates
@@ -263,7 +276,7 @@ export class DrawManager extends Container {
         const totalPixels = shape.getPositions.size;
         if (totalPixels === 0) return;
         this._shapeProgress = this._drawnPixels.size / totalPixels;
-        this._progressBar.progress = this._shapeProgress; // Update progress bar
+        // this._progressBar.progress = this._shapeProgress; // Update progress bar
     }
 
     private triggerCompletionAnimation(): void {
@@ -273,7 +286,8 @@ export class DrawManager extends Container {
             point.clear();
             point.circle(0, 0, this.POINT_RADIUS).fill(0x00FF00); // Change to green
         }
-        EventEmitter.instance.emit('shapeCompleted');
+        EventEmitter.instance.emit(ShapeCompleted);
+        this._isDrawing = false; // Stop drawing
     }
 
     private findClosestShapePixel(shape: Shape, x: number, y: number, maxDistance: number = Infinity): Point | null {
@@ -305,7 +319,7 @@ export class DrawManager extends Container {
     }
 
     private nextShape(): void {
-        if (this.currentShapeIndex < this._shapes.length - 1) {
+        if (this.currentShapeIndex < TARGET_SHAPE_NUMBER - 1) {
             // Reset drawing state
             this._isDrawing = false;
             this._lastPoint = null;
@@ -325,8 +339,25 @@ export class DrawManager extends Container {
             this._requiredCoverage = SHAPES[this.currentShapeIndex].requiredCoverage;
         } else {
             // All shapes completed
-            EventEmitter.instance.emit('allShapesCompleted');
+            EventEmitter.instance.emit(AllShapesCompleted);
         }
+    }
+    private goEndShape(): void {
+            // Reset drawing state
+            this._isDrawing = false;
+            this._lastPoint = null;
+            this._pathPoints = [];
+            this._drawnPixels.clear();
+            this._isBurned = false;
+            this._isCompleted = false;
+            this._shapeProgress = 0;
+
+            // Clear all point graphics
+            this._pointsContainer.removeChildren();
+            this._shapes[this.currentShapeIndex].visible = false;
+            this.currentShapeIndex = END_SHAPE_NUMBER - 1; // Set to the end shape index
+            this._shapes[this.currentShapeIndex].visible = true;
+            this._requiredCoverage = SHAPES[this.currentShapeIndex].requiredCoverage;
     }
 
     // Add this method to check for path crossings
@@ -411,9 +442,10 @@ export class DrawManager extends Container {
             point.clear();
             point.circle(0, 0, this.POINT_RADIUS).fill(0xFF0000); // Change to red
         }
-
         // Emit an event that the game can listen for
-        EventEmitter.instance.emit('shapeBurned');
+        EventEmitter.instance.emit(ShapeBurned);
+        // this.onPointerUp(); // Call pointer up to reset state
+        this._isDrawing = false;
     }
 
 
@@ -423,8 +455,14 @@ export class DrawManager extends Container {
 
         const currentShape = this._shapes[this.currentShapeIndex];
         if (!currentShape) return;
-        const startPos = SHAPES[this.currentShapeIndex].autoPlayStartPosition;
-        const endPos = SHAPES[this.currentShapeIndex].autoPlayEndPosition;
+
+        // Scale the stored positions to the current device
+        const startPosConfig = SHAPES[this.currentShapeIndex].handStartPosition;
+        const endPosConfig = SHAPES[this.currentShapeIndex].handEndPosition;
+
+        // Convert to current device coordinates
+        const startPos = this.scalePositionToDevice(startPosConfig.x, startPosConfig.y);
+        const endPos = this.scalePositionToDevice(endPosConfig.x, endPosConfig.y);
 
         // Reset drawing state
         this._pathPoints = [];
@@ -434,10 +472,10 @@ export class DrawManager extends Container {
         this._isCompleted = false;
         this._shapeProgress = 0;
 
-        // Convert global positions to shape's texture coordinates
-        const startLocal = currentShape.toLocal(new Point(startPos.x, startPos.y));
-        const startTextureX = Math.floor((startLocal.x / currentShape.scale.x) + currentShape.texture.width / 2);
-        const startTextureY = Math.floor((startLocal.y / currentShape.scale.y) + currentShape.texture.height / 2);
+        // Convert scaled global positions to shape's texture coordinates
+        const startLocal = this.toLocal(startPos);
+        const startTextureX = SHAPES[this.currentShapeIndex].autoPlayStartPosition.x;
+        const startTextureY = SHAPES[this.currentShapeIndex].autoPlayStartPosition.y;
 
         // Find closest valid starting point
         const startPoint = this.findClosestShapePixel(currentShape, startTextureX, startTextureY, 40);
@@ -448,8 +486,8 @@ export class DrawManager extends Container {
 
         // Convert global end position to texture coordinates
         const endLocal = currentShape.toLocal(new Point(endPos.x, endPos.y));
-        const endTextureX = Math.floor((endLocal.x / currentShape.scale.x) + currentShape.texture.width / 2);
-        const endTextureY = Math.floor((endLocal.y / currentShape.scale.y) + currentShape.texture.height / 2);
+        const endTextureX = SHAPES[this.currentShapeIndex].autoPlayEndPosition.x;
+        const endTextureY = SHAPES[this.currentShapeIndex].autoPlayEndPosition.y;
 
         // Find closest valid ending point
         const endPoint = this.findClosestShapePixel(currentShape, endTextureX, endTextureY, 40);
@@ -497,7 +535,6 @@ export class DrawManager extends Container {
             duration: 1,
             ease: "linear", // Can be changed to other easing functions
             onUpdate: () => {
-                console.log("Auto-draw progress:", progress.value);
                 // Calculate current index in the path based on progress
                 const targetIndex = Math.min(
                     this._autoDrawPath.length - 1,
@@ -626,4 +663,18 @@ export class DrawManager extends Container {
         this._autoPlayHand.visible = false;
         this._autoPlayHand.scale.set(0);
     }
+
+    // Add this helper method to convert stored positions to current device positions
+    private scalePositionToDevice(storedX: number, storedY: number): Point {
+        // Convert the stored coordinates to relative percentages of the base dimensions
+        const relativeX = storedX / this._baseWidth;
+        const relativeY = storedY / this._baseHeight;
+
+        // Convert relative coordinates to the current device dimensions
+        const deviceX = relativeX * this._deviceWidth;
+        const deviceY = relativeY * this._deviceHeight;
+
+        return new Point(deviceX, deviceY);
+    }
+
 }
