@@ -9,12 +9,15 @@ import { DrawManager } from "../managers/DrawManager";
 import { SHAPES } from "../config";
 import { TranslatorManager } from "../core/translator/TranslatorManager";
 import { ProgressBar } from "../components/ProgressBar";
+import { AutoplayManager } from "../managers/AutoPlayManager";
 
 export class MainScene extends BaseScene {
 
     private _background!: Sprite;
     private _playNowButton!: Button;
     private _drawManager!: DrawManager;
+    private _progressBar!: ProgressBar;
+    private _autoPlayManager!: AutoplayManager; // Placeholder for the AutoPlayManager
 
     private _particleContainer!: ParticleContainer;
 
@@ -43,8 +46,23 @@ export class MainScene extends BaseScene {
         this._background.label = 'MainSceneBackground';
         this.addChild(this._background);
 
-        this._drawManager = new DrawManager(SHAPES);
+        this._progressBar = new ProgressBar({
+            background: 'progressbarbg',
+            fill: 'progressbarfill',
+            icon: 'icon',
+            width: 600,
+            height: 60,
+            iconScale: 1.15,
+            iconOffset: 10
+        });
+        this._progressBar.position.set(-300, -370);
+        
+        this.addChild(this._progressBar);
+
+        this._drawManager = new DrawManager(SHAPES, this._progressBar);
         this.addChild(this._drawManager);
+
+        this._autoPlayManager = new AutoplayManager(this._drawManager);
 
         this._playNowButton = new Button('buttonbg', TranslatorManager.instance.translate('CAN YOU DRAW IT'), new TextStyle({ fill: 0xfafafa, fontFamily: "sniglet-regular" }), this);
         this._playNowButton.label = 'PlayNowButton';
@@ -54,19 +72,7 @@ export class MainScene extends BaseScene {
             console.log('Play Now Button Clicked');
         });
 
-        let progressbar = new ProgressBar({
-            background: 'progressbarbg',
-            fill: 'progressbarfill',
-            icon: 'icon',
-            width: 600,
-            height: 60,
-            iconScale: 1.15,
-            iconOffset: 10
-        });
-        progressbar.position.set(-300, -370);
-        progressbar.animateProgress(0.56, 1);
-        
-        this.addChild(progressbar);
+       
 
         this._particleContainer = new ParticleContainer({
             dynamicProperties: {

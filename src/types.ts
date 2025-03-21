@@ -3,7 +3,15 @@ export type Position = {
     y: number
 }
 
+
 export type ShapeType = {
     name: string,
     requiredCoverage: number,
+    autoPlayStartPosition: Position,
+    autoPlayEndPosition: Position,
+}
+
+export enum GameState {
+    STARTED = "started",
+    FINISHED = "finished",
 }
